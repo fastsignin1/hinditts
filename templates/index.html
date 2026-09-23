@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Hindi Audio Generator</title>
+<style>
+  :root {
+    --bg:       #0f172a;
+    --surface:  #1e293b;
+    --border:   #334155;
+    --primary:  #4f46e5;
+    --green:    #10b981;
+    --green-dk: #059669;
+    --text:     #f1f5f9;
+    --muted:    #94a3b8;
+    --label:    #cbd5e1;
+    --inp:      #0b1120;
+    --r:        12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px 80px;
+  }
+
+  .wrap { width: 100%; max-width: 780px; }
+
+  /* ── Header ─────────────────────────────────── */
+  .hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  h1 { font-size: 1.75rem; font-weight: 700; color: #f8fafc; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+  .storage-bar { display: flex; align-items: center; gap: 10px; }
+
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    background: rgba(79,70,229,.15);
+    border: 1px solid rgba(99,102,241,.35);
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #a5b4fc;
+    cursor: pointer;
+    user-select: none;
+    transition: background .2s;
+  }
+  .count-badge:hover { background: rgba(79,70,229,.28); }
+  #countNum { font-size: 1rem; font-weight: 700; color: #818cf8; }
+
+  #btnClearAll {
+    display: none;
+    padding: 6px 14px;
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.35);
+    border-radius: 999px;
+    color: #fca5a5;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  #btnClearAll:hover { background: rgba(239,68,68,.25); }
+
+  /* ── Card ───────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .row label { font-size: .88rem; font-weight: 600; color: var(--label); white-space: nowrap; }
+
+  select {
+    background: var(--inp);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: .88rem;
+    outline: none;
+    cursor: pointer;
+    flex: 1;
+    max-width: 320px;
+    transition: border-color .2s;
+  }
+  select:focus { border-color: var(--primary); }
+
+  #stats { margin-left: auto; font-size: .8rem; color: var(--muted); white-space: nowrap; }
+
+  textarea {
+    width: 100%;
+    height: 220px;
+    background: var(--inp);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    color: var(--text);
+    font-size: .95rem;
+    line-height: 1.65;
+    resize: vertical;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(79,70,229,.2);
+  }
+
+  /* ── Generate button ────────────────────────── */
+  #genBtn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    border: none;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 6px 20px rgba(79,70,229,.3);
+    transition: transform .15s, box-shadow .2s, opacity .2s;
+  }
+  #genBtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(79,70,229,.45);
+  }
+  #genBtn:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* ── Progress bar ───────────────────────────── */
+  #progress {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 13px 16px;
+    background: var(--inp);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,.1);
+    border-top-color: #a5b4fc;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #progressMsg { font-size: .88rem; color: #93c5fd; }
+
+  /* ── Error box ──────────────────────────────── */
+  #errBox {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.35);
+    border-radius: 10px;
+    color: #fca5a5;
+    font-size: .88rem;
+  }
+
+  /* ── Result card ────────────────────────────── */
+  #result { display: none; animation: fadeUp .3s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 22px;
+  }
+  .result-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .result-head h3 { font-size: 1rem; color: #f1f5f9; }
+  #resultMeta { font-size: .82rem; color: var(--muted); }
+
+  .audio-box {
+    background: var(--inp);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  audio { width: 100%; margin-bottom: 12px; }
+
+  #dlLink {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    background: var(--green);
+    color: #fff;
+    font-weight: 600;
+    font-size: .92rem;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background .2s, transform .15s;
+  }
+  #dlLink:hover { background: var(--green-dk); transform: translateY(-1px); }
+
+  .hindi-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .hindi-head label { font-size: .88rem; font-weight: 600; color: var(--label); }
+
+  .btn-copy {
+    padding: 6px 12px;
+    background: #334155;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    font-size: .78rem;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-copy:hover { background: #475569; }
+
+  /* Hindi output: dir=auto so Devanagari renders correctly */
+  #hindiOut {
+    width: 100%;
+    height: 140px;
+    background: var(--inp);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: #e2e8f0;
+    font-size: .95rem;
+    line-height: 1.7;
+    resize: vertical;
+  }
+
+  /* ── Side panel ─────────────────────────────── */
+  #panelOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 100;
+  }
+  #panel {
+    display: none;
+    position: fixed;
+    top: 0; right: 0;
+    width: min(420px, 100vw);
+    height: 100vh;
+    background: #111827;
+    border-left: 1px solid var(--border);
+    z-index: 101;
+    flex-direction: column;
+    animation: slideIn .22s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0);   }
+  }
+
+  .panel-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-hdr h2 { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+
+  .panel-acts { display: flex; gap: 8px; align-items: center; }
+
+  .btn-delall {
+    padding: 6px 12px;
+    background: rgba(239,68,68,.15);
+    border: 1px solid rgba(239,68,68,.4);
+    border-radius: 6px;
+    color: #fca5a5;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-delall:hover { background: rgba(239,68,68,.3); }
+
+  .btn-close {
+    width: 30px; height: 30px;
+    background: #334155;
+    border: none;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s, color .2s;
+  }
+  .btn-close:hover { background: #475569; color: #f1f5f9; }
+
+  #panelBody { flex: 1; overflow-y: auto; padding: 12px 16px; }
+
+  .panel-empty {
+    text-align: center;
+    color: var(--muted);
+    margin-top: 60px;
+    font-size: .9rem;
+  }
+
+  .file-item {
+    background: #1e293b;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    transition: opacity .2s;
+  }
+  .file-item.removing { opacity: .35; pointer-events: none; }
+
+  .file-name {
+    font-size: .82rem;
+    color: #94a3b8;
+    margin-bottom: 4px;
+    word-break: break-all;
+    font-family: monospace;
+  }
+  .file-meta { font-size: .75rem; color: #64748b; margin-bottom: 10px; }
+
+  .file-btns { display: flex; gap: 8px; }
+
+  .btn-f-dl {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(16,185,129,.15);
+    border: 1px solid rgba(16,185,129,.35);
+    border-radius: 7px;
+    color: #6ee7b7;
+    font-size: .82rem;
+    font-weight: 600;
+    text-decoration: none;
+    text-align: center;
+    transition: background .2s;
+  }
+  .btn-f-dl:hover { background: rgba(16,185,129,.28); }
+
+  .btn-f-del {
+    padding: 8px 10px;
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: 7px;
+    color: #fca5a5;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-f-del:hover { background: rgba(239,68,68,.25); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <h1>Hindi Audio Generator</h1>
+    <div class="storage-bar">
+      <div class="count-badge" onclick="openPanel()" title="Click to manage stored files">
+        &#128193;&nbsp;<span id="countNum">0</span>&nbsp;stored
+      </div>
+      <button id="btnClearAll" onclick="deleteAll()">&#128465; Clear All</button>
+    </div>
+  </div>
+  <p class="sub">Paste English or Hindi text to generate a Hindi MP3 audio file.</p>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="row">
+      <label for="modeSelect">Input language:</label>
+      <select id="modeSelect">
+        <option value="auto">Auto-detect (English or Hindi)</option>
+        <option value="en_to_hi">English &#8212; translate &amp; speak in Hindi</option>
+        <option value="hi_direct">Hindi &#8212; speak directly</option>
+      </select>
+      <span id="stats">0 chars</span>
+    </div>
+
+    <textarea id="inputText" placeholder="Paste your text here..."></textarea>
+
+    <button id="genBtn" onclick="generate()">
+      <span>&#128266;</span>
+      <span id="btnLabel">Generate Hindi Audio</span>
+    </button>
+
+    <div id="progress">
+      <div class="spinner"></div>
+      <span id="progressMsg">Processing&#8230;</span>
+    </div>
+
+    <div id="errBox"></div>
+  </div>
+
+  <!-- Result -->
+  <div id="result">
+    <div class="result-card">
+      <div class="result-head">
+        <h3>&#127911; Generated Audio</h3>
+        <span id="resultMeta"></span>
+      </div>
+      <div class="audio-box">
+        <audio id="player" controls></audio>
+        <a id="dlLink" href="#">&#11015; Download MP3</a>
+      </div>
+      <div class="hindi-head">
+        <label>Hindi Text</label>
+        <button class="btn-copy" onclick="copyText()">Copy</button>
+      </div>
+      <textarea id="hindiOut" readonly dir="auto"></textarea>
+    </div>
+  </div>
+
+</div>
+
+<!-- Side panel overlay (clicking outside closes) -->
+<div id="panelOverlay" onclick="closePanel()"></div>
+
+<!-- Side panel -->
+<div id="panel">
+  <div class="panel-hdr">
+    <h2>Stored Audio Files</h2>
+    <div class="panel-acts">
+      <button class="btn-delall" onclick="deleteAll()">&#128465; Clear All</button>
+      <button class="btn-close" onclick="closePanel()">&#x2715;</button>
+    </div>
+  </div>
+  <div id="panelBody">
+    <div class="panel-empty">No files stored yet.</div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   Global state
+================================================================ */
+var storedCount = 0;
+
+/* ================================================================
+   Char counter  (updates on every keystroke AND paste)
+================================================================ */
+document.getElementById('inputText').addEventListener('input', function() {
+  document.getElementById('stats').textContent =
+    this.value.length.toLocaleString() + ' chars';
+});
+
+/* ================================================================
+   On page load — fetch stored file count
+================================================================ */
+refreshCount();
+
+/* ================================================================
+   refreshCount  — updates the badge number and Clear-All visibility
+================================================================ */
+function refreshCount() {
+  fetch('/files')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      storedCount = (d.count || 0);
+      document.getElementById('countNum').textContent = storedCount;
+      document.getElementById('btnClearAll').style.display =
+        storedCount > 0 ? 'inline-flex' : 'none';
+    })
+    .catch(function() { /* silently ignore network errors on badge */ });
+}
+
+/* ================================================================
+   Panel open / close
+================================================================ */
+function openPanel() {
+  document.getElementById('panelOverlay').style.display = 'block';
+  document.getElementById('panel').style.display = 'flex';
+  loadPanelFiles();
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').style.display = 'none';
+  document.getElementById('panel').style.display = 'none';
+}
+
+/* ================================================================
+   loadPanelFiles  — fetch /files and render the list
+================================================================ */
+function loadPanelFiles() {
+  var body = document.getElementById('panelBody');
+  body.innerHTML = '<div class="panel-empty">Loading&#8230;</div>';
+
+  fetch('/files')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      storedCount = (d.count || 0);
+      document.getElementById('countNum').textContent = storedCount;
+      document.getElementById('btnClearAll').style.display =
+        storedCount > 0 ? 'inline-flex' : 'none';
+
+      if (!d.files || d.files.length === 0) {
+        body.innerHTML = '<div class="panel-empty">No files stored yet.</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < d.files.length; i++) {
+        var f = d.files[i];
+        // Format mtime as local date-time string
+        var dt = new Date(f.mtime * 1000).toLocaleString();
+        html += '<div class="file-item" id="fi-' + i + '">';
+        html +=   '<div class="file-name">' + f.filename + '</div>';
+        html +=   '<div class="file-meta">' + f.size_kb + ' KB &nbsp;&bull;&nbsp; ' + dt + '</div>';
+        html +=   '<div class="file-btns">';
+        html +=     '<a class="btn-f-dl" href="' + f.download_url + '" download="' + f.filename + '">&#11015; Download</a>';
+        html +=     '<button class="btn-f-del" onclick="deleteOne(\'' + f.filename + '\',' + i + ')">&#128465; Delete</button>';
+        html +=   '</div>';
+        html += '</div>';
+      }
+      body.innerHTML = html;
+    })
+    .catch(function() {
+      body.innerHTML = '<div class="panel-empty">Could not load files.</div>';
+    });
+}
+
+/* ================================================================
+   deleteOne  — delete a single file by name
+================================================================ */
+function deleteOne(filename, idx) {
+  var item = document.getElementById('fi-' + idx);
+  if (item) item.classList.add('removing');
+
+  fetch('/delete/' + filename, { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'deleted' || d.status === 'ok') {
+        if (item) item.remove();
+        storedCount = Math.max(0, storedCount - 1);
+        document.getElementById('countNum').textContent = storedCount;
+        document.getElementById('btnClearAll').style.display =
+          storedCount > 0 ? 'inline-flex' : 'none';
+        if (storedCount === 0) {
+          document.getElementById('panelBody').innerHTML =
+            '<div class="panel-empty">No files stored yet.</div>';
+        }
+      } else {
+        if (item) item.classList.remove('removing');
+      }
+    })
+    .catch(function() {
+      if (item) item.classList.remove('removing');
+    });
+}
+
+/* ================================================================
+   deleteAll  — delete every stored file
+================================================================ */
+function deleteAll() {
+  if (storedCount === 0) { closePanel(); return; }
+  if (!confirm('Delete all ' + storedCount + ' stored audio file(s)?')) return;
+
+  fetch('/delete-all', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      storedCount = 0;
+      document.getElementById('countNum').textContent = '0';
+      document.getElementById('btnClearAll').style.display = 'none';
+      document.getElementById('panelBody').innerHTML =
+        '<div class="panel-empty">No files stored yet.</div>';
+    })
+    .catch(function() { /* silently ignore */ });
+}
+
+/* ================================================================
+   generate  — main action: translate + TTS + show result
+================================================================ */
+function generate() {
+  var text = document.getElementById('inputText').value.trim();
+  if (!text) { showErr('Please paste some text first.'); return; }
+
+  var mode = document.getElementById('modeSelect').value;
+
+  // Reset UI state
+  document.getElementById('errBox').style.display  = 'none';
+  document.getElementById('result').style.display  = 'none';
+  document.getElementById('genBtn').disabled       = true;
+  document.getElementById('btnLabel').textContent  = 'Generating\u2026';
+  document.getElementById('progress').style.display = 'flex';
+  document.getElementById('progressMsg').textContent =
+    mode === 'en_to_hi' ? 'Translating to Hindi\u2026' : 'Synthesising Hindi audio\u2026';
+
+  var fd = new FormData();
+  fd.append('text', text);
+  fd.append('mode', mode);
+
+  fetch('/process', { method: 'POST', body: fd })
+    .then(function(r) {
+      if (!r.ok && r.status !== 500) throw new Error('Server returned ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      if (data.status !== 'success') throw new Error(data.message || 'Unknown error');
+
+      document.getElementById('player').src          = data.audio_url + '?t=' + Date.now();
+      document.getElementById('dlLink').href         = data.download_url;
+      document.getElementById('dlLink').download     = data.filename;
+      document.getElementById('hindiOut').value      = data.hindi_text;
+      document.getElementById('resultMeta').textContent =
+        data.chunk_count + ' chunks \u00b7 ' + data.file_size_mb + ' MB';
+
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      refreshCount();   // update the badge
+    })
+    .catch(function(e) {
+      showErr(e.message || 'Something went wrong. Please try again.');
+    })
+    .finally(function() {
+      document.getElementById('genBtn').disabled       = false;
+      document.getElementById('btnLabel').textContent  = 'Generate Hindi Audio';
+      document.getElementById('progress').style.display = 'none';
+    });
+}
+
+/* ================================================================
+   showErr  — display error message below the generate button
+================================================================ */
+function showErr(msg) {
+  var box = document.getElementById('errBox');
+  box.textContent = '\u26a0\ufe0f ' + msg;
+  box.style.display = 'block';
+}
+
+/* ================================================================
+   copyText  — copy Hindi output to clipboard
+================================================================ */
+function copyText() {
+  var ta = document.getElementById('hindiOut');
+  ta.select();
+  document.execCommand('copy');
+  var btn = document.querySelector('.btn-copy');
+  btn.textContent = 'Copied!';
+  setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+}
+</script>
+</body>
+</html>
