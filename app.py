@@ -13,11 +13,11 @@ AUDIO_DIR = os.path.join(BASE_DIR, "static", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # ── Tuning knobs ─────────────────────────────────────────────────────────────
-MAX_TRANSLATE_CHARS = 1500   # chars per translation chunk
-MAX_TTS_CHARS       = 140    # Google TTS hard limit ≈ 200; safe limit = 140
-REQUEST_DELAY_TTS   = 0.25   # seconds between TTS requests
-REQUEST_DELAY_TRANS = 0.5    # seconds between translation requests
-MAX_RETRIES         = 4
+MAX_TRANSLATE_CHARS = 2500   # chars per translation chunk (cuts translation requests by ~half)
+MAX_TTS_CHARS       = 180    # safe max for translate_tts (reduces round trips by ~25%)
+REQUEST_DELAY_TTS   = 0.12   # faster synthesis without triggering limits
+REQUEST_DELAY_TRANS = 0.25   # faster translation
+MAX_RETRIES         = 3
 
 HEADERS = {
     "User-Agent": (
